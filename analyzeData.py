@@ -1,3 +1,5 @@
+# データから移動平均を求めてファイルに出力するプログラム
+
 import pandas as pd
 
 # Step 1: Read the CSV file
@@ -16,7 +18,6 @@ df['Year-Month'] = df['Year'].astype(str) + '-' + df['Month'].astype(str).str.zf
 # Step 5: Display the resulting DataFrame
 print("\nData with Moving Average and Year-Month:")
 print(df)
-
 
 # Step 4: Export the DataFrame to a CSV file
 csv_file_path = 'moving_average.csv'
