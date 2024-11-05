@@ -2,29 +2,24 @@ import pandas as pd
 import numpy as np
 import random
 
-# Furniture categories list
+# 家具カテゴリのリスト
 furniture_categories = ["Table", "Chair", "Sofa", "Cabinet", "Bed", "Desk"]
 
-# Range of years and months
-years = [2021, 2022, 2023]
+# 年と月の範囲
+years = [2018, 2019, 2020, 2021, 2022, 2023]
 months = list(range(1, 13))
 
-# Create dummy data
-num_entries = 500
-data = {
-    "Year": [random.choice(years) for _ in range(num_entries)],
-    "Month": [random.choice(months) for _ in range(num_entries)],
-    "Furniture Category": [random.choice(furniture_categories) for _ in range(num_entries)],
-    "Order Quantity": [random.randint(1, 50) for _ in range(num_entries)]  # Set random quantity per order
-}
+# すべての年・月・家具カテゴリの組み合わせを作成
+all_combinations = pd.DataFrame([(year, month, category) for year in years for month in months for category in furniture_categories],
+                                columns=["Year", "Month", "Furniture Category"])
 
-# Convert to DataFrame
-df_dummy_data = pd.DataFrame(data)
+# ランダムな注文数量を生成し、結合する
+num_entries = len(all_combinations)  # 全組み合わせの数
+order_quantities = [random.randint(1, 50) for _ in range(num_entries)]  # 1〜50のランダムな数量
+all_combinations['Order Quantity'] = order_quantities
 
-# Display the first 5 rows
-print(df_dummy_data.head())  # Show the output
+# DataFrameを確認
+print(all_combinations.head())  # 最初の5行を表示
 
-# Export to CSV
-df_dummy_data.to_csv('dummy_data.csv', index=False)
-
-
+# CSVに出力
+all_combinations.to_csv('dummy_data.csv', index=False)
