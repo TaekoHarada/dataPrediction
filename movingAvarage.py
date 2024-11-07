@@ -1,7 +1,9 @@
+# Moving Average Calculation
+
 import pandas as pd
 
 # Step 1: Read the CSV file
-df = pd.read_csv('dummy_data.csv')
+df = pd.read_csv('data/modified_sales_data.csv')
 
 # Step 2: Display the first few rows of the DataFrame to understand its structure
 print("Original Data:")
