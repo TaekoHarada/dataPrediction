@@ -1,11 +1,12 @@
 import pandas as pd
 from sklearn.linear_model import LinearRegression
+from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
+
 from sklearn.metrics import mean_squared_error
 
 # データの読み込み
 data = pd.read_csv('data/modified_sales_data.csv')
 
-# 年、月の列を追加
 # Add 'Year', 'Month', and 'Day of Year' columns
 data['Date'] = pd.to_datetime(data['Date'], format='%d/%m/%Y', dayfirst=True)
 data['Year'] = data['Date'].dt.year
@@ -13,9 +14,28 @@ data['Month'] = data['Date'].dt.month
 data['DayOfYear'] = data['Date'].dt.dayofyear  # 1-365
 print(data.head())
 
+# ユーザーが送信した特徴量の名前のリスト（nullの特徴量は含まれていない）
+user_selected_features = ["Date","Year","Month","DayOfYear",'Order Quantity',"Temperature", "CPI", "IsHoliday"]  # 例: ユーザーが選択した特徴量
+
+# 使用する特徴量のリストを作成
+all_features = ["DayOfYear", "Temperature", "Fuel_Price", "CPI", "Unemployment", "IsHoliday"]
+
+# null（選択されていない）特徴量を除外
+selected_features = [feature for feature in all_features if feature in user_selected_features]
+
+# csvから読み込んだデータ(DataFrame)を、選択された特徴量を列として作成
+features = data[selected_features].copy()
+
+print("選択された特徴量:", selected_features)
+print(features)
+
+
 # 特徴量（Features）とターゲット変数（Target Variable）を定義
-X = data[['DayOfYear','Temperature', 'Fuel_Price', 'CPI', 'Unemployment', 'IsHoliday']].copy()
-X['IsHoliday'] = X['IsHoliday'].astype(int)
+X = data[selected_features].copy()
+
+if 'IsHoliday' in user_selected_features:
+    X['IsHoliday'] = X['IsHoliday'].astype(int)
+
 X = X.fillna(X.mean())  # 欠損値を補完
 
 y = data['Order Quantity']
@@ -42,7 +62,14 @@ X_train = X_train.fillna(X_train.mean())
 X_test = X_test.fillna(X_test.mean())
 
 # モデルの作成とトレーニング
-model = LinearRegression()
+# model = LinearRegression()
+# たくさんの木を並べて安定した結果を出す
+# model = RandomForestRegressor(n_estimators=100, random_state=42)
+# learning_rate: 学習のスピードや慎重さ（大きいと早く学習するが、不安定になることもある）。デフォルトは0.1
+
+# 1本の木でうまくいかなかった部分を次の木で少しずつ修正していく
+model = GradientBoostingRegressor(n_estimators=100, learning_rate=0.1, random_state=42)  # learning_rateは学習率
+
 model.fit(X_train, y_train)
 
 # 予測
@@ -77,3 +104,13 @@ future_predictions = model.predict(future_data)
 print("\nPredicted Sales for Next Year:")
 for date, prediction in zip(next_year_days, future_predictions):
     print(f"{date.date()}: Predicted Order Quantity = {prediction:.2f}")
+
+# Convert future_predictions to a DataFrame
+future_predictions_df = pd.DataFrame({
+    'Date': next_year_days,
+    'Predicted Order Quantity': future_predictions
+})
+
+# Export predicted data to a CSV file
+csv_file_path = 'data/future_predictions.csv'
+future_predictions_df.to_csv(csv_file_path, index=False)  # Export without row indices
