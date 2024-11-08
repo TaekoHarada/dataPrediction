@@ -2,7 +2,8 @@ import pandas as pd
 import random
 
 # Load the data from a CSV file
-data = pd.read_csv('data/salesdata.csv')
+# data = pd.read_csv('data/salesdata.csv')
+data = pd.read_csv('data/combined_salesdata.csv')
 
 # Remove the specified columns
 columns_to_remove = ['Store', 'MarkDown1', 'MarkDown2', 'MarkDown3', 'MarkDown4', 'MarkDown5']

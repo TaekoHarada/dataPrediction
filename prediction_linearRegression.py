@@ -14,31 +14,30 @@ data['Month'] = data['Date'].dt.month
 data['DayOfYear'] = data['Date'].dt.dayofyear  # 1-365
 print(data.head())
 
-# ユーザーが送信した特徴量の名前のリスト（nullの特徴量は含まれていない）
-user_selected_features = ["Date","Year","Month","DayOfYear",'Order Quantity',"Temperature", "CPI", "IsHoliday"]  # 例: ユーザーが選択した特徴量
+# user selected features Get from HTTP request
+user_selected_features = ["Year","Month","DayOfYear", 'Unemployment',"IsHoliday"] 
+
+#Target
+target = 'Order Quantity'
 
 # 使用する特徴量のリストを作成
-all_features = ["DayOfYear", "Temperature", "Fuel_Price", "CPI", "Unemployment", "IsHoliday"]
+all_features = ["Year","Month","DayOfYear", "Temperature", "Fuel_Price", "CPI", "Unemployment", "IsHoliday"]
 
 # null（選択されていない）特徴量を除外
 selected_features = [feature for feature in all_features if feature in user_selected_features]
 
-# csvから読み込んだデータ(DataFrame)を、選択された特徴量を列として作成
+# csvから読み込んだデータ(DataFrame)を、選択された特徴と”ターゲット”を列として作成
 features = data[selected_features].copy()
 
 print("選択された特徴量:", selected_features)
 print(features)
 
 
-# 特徴量（Features）とターゲット変数（Target Variable）を定義
-X = data[selected_features].copy()
+if 'IsHoliday' in selected_features:
+    data['IsHoliday'] = data['IsHoliday'].astype(int)
 
-if 'IsHoliday' in user_selected_features:
-    X['IsHoliday'] = X['IsHoliday'].astype(int)
+# data = data.fillna(data.mean())  # 欠損値を補完
 
-X = X.fillna(X.mean())  # 欠損値を補完
-
-y = data['Order Quantity']
 
 # Min year
 min_year = data['Year'].min()
@@ -52,16 +51,19 @@ print(f"Max Year: {max_year}")
 train_data = data[data['Year'] < max_year]
 test_data = data[data['Year'] == max_year]
 
-X_train = train_data[['DayOfYear','Temperature', 'Fuel_Price', 'CPI', 'Unemployment', 'IsHoliday']].copy()
-y_train = train_data['Order Quantity']
-X_test = test_data[['DayOfYear','Temperature', 'Fuel_Price', 'CPI', 'Unemployment', 'IsHoliday']].copy()
-y_test = test_data['Order Quantity']
+X_train = train_data[selected_features].copy()
+y_train = train_data[target]
+X_test = test_data[selected_features].copy()
+y_test = test_data[target]
 
 # 欠損値の補完
 X_train = X_train.fillna(X_train.mean())
 X_test = X_test.fillna(X_test.mean())
 
-# モデルの作成とトレーニング
+
+print("X_train", X_train)
+print("y_train", y_train)
+
 # model = LinearRegression()
 # たくさんの木を並べて安定した結果を出す
 # model = RandomForestRegressor(n_estimators=100, random_state=42)
@@ -83,27 +85,47 @@ print(f"Mean Squared Error: {mse:.2f}")
 
 
 # ---- Predict sales for the next year ----
+
+# Combine training and test data to use for the future prediction
+full_data = pd.concat([X_train, X_test])
+
 # Prepare data for the next year
 next_year = max_year + 1
 next_year_days = pd.date_range(start=f'{next_year}-01-01', end=f'{next_year}-12-31')
 
-# Create a new DataFrame with features for the next year
-future_data = pd.DataFrame({
-    'DayOfYear': next_year_days.dayofyear,
-    'Temperature': X_train['Temperature'].mean(),  # Using the mean of Temperature as a placeholder
-    'Fuel_Price': X_train['Fuel_Price'].mean(),    # Using the mean of Fuel_Price
-    'CPI': X_train['CPI'].mean(),                  # Using the mean of CPI
-    'Unemployment': X_train['Unemployment'].mean(),# Using the mean of Unemployment
-    'IsHoliday': next_year_days.map(lambda x: 1 if x.weekday() in [5, 6] else 0)  # Mark weekends as holidays
-})
+# Initialize the future_data DataFrame
+future_data = pd.DataFrame()
+
+# Dynamically add columns to future_data based on user-selected features
+if 'Year' in selected_features:
+    future_data['Year'] = next_year_days.year
+
+if 'Month' in selected_features:
+    future_data['Month'] = next_year_days.month
+
+if 'DayOfYear' in selected_features:
+    future_data['DayOfYear'] = next_year_days.dayofyear
+
+if 'Temperature' in selected_features:
+    future_data['Temperature'] = full_data['Temperature'].mean()  # Using the mean as a placeholder
+
+if 'Fuel_Price' in selected_features:
+    future_data['Fuel_Price'] = full_data['Fuel_Price'].mean()  # Using the mean as a placeholder
+
+if 'CPI' in selected_features:
+    future_data['CPI'] = full_data['CPI'].mean()  # Using the mean as a placeholder
+
+if 'Unemployment' in selected_features:
+    future_data['Unemployment'] = full_data['Unemployment'].mean()  # Using the mean as a placeholder
+
+if 'IsHoliday' in selected_features:
+    future_data['IsHoliday'] = next_year_days.map(lambda x: 1 if x.weekday() in [5, 6] else 0)  # Mark weekends as holidays
+
+# Vefify if user selected features are in future_data
+print(future_data)
 
 # Make predictions for the next year
 future_predictions = model.predict(future_data)
-
-# Print the predicted sales for each day in the next year
-print("\nPredicted Sales for Next Year:")
-for date, prediction in zip(next_year_days, future_predictions):
-    print(f"{date.date()}: Predicted Order Quantity = {prediction:.2f}")
 
 # Convert future_predictions to a DataFrame
 future_predictions_df = pd.DataFrame({
